@@ -17,6 +17,8 @@
 
 #include "particle_filter.h"
 
+#define EPS 0.00001
+
 using namespace std;
 
 void ParticleFilter::init(double x, double y, double theta, double std[]) {
@@ -25,15 +27,25 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 	// Add random Gaussian noise to each particle.
 	// NOTE: Consult particle_filter.h for more information about this method (and others in this file).
 
-	num_particles = 20;
-	default_random_engine gen;
+	if (is_initialized){
+		return;
+	}
+	num_particles = 100;
 
-	normal_distribution<double> dist_x(x, std[0]);
-	normal_distribution<double> dist_y(y, std[1]);
-	normal_distribution<double> dist_theta(theta, std[2]);
+	// Extracting standard derivations
+	double std_x = std[0];
+	double std_y = std[1];
+	double std_theta = std[2];
 
-	int i;
+	// Creating normal distribution
+	normal_distribution<double> dist_x(x, std_x);
+	normal_distribution<double> dist_y(y, std_y]);
+	normal_distribution<double> dist_theta(theta, std_theta);
+
+	// Generating particles with normal distribution with mean on GPS values
+
 	for(int i=0; i<num_particles; i++){
+
 		Particle current_particle;
 		current_particle.id = i;
 		current_particle.x = dist_x(gen);
@@ -47,9 +59,6 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 	is_initialized = true;
 }
 
-	}
-
-}
 
 void ParticleFilter::prediction(double delta_t, double std_pos[], double velocity, double yaw_rate) {
 	// TODO: Add measurements to each particle and add random Gaussian noise.
@@ -57,6 +66,39 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
 	//  http://en.cppreference.com/w/cpp/numeric/random/normal_distribution
 	//  http://www.cplusplus.com/reference/random/default_random_engine/
 
+	// Extracting standard deviation
+	double std_x = std[0];
+	double std_y = std[1];
+	double std_theta = std[2];
+
+	// Creating normal distribution
+
+	normal_distribution<double> dist_x(x, std_x);
+	normal_distribution<double> dist_y(y, std_y]);
+	normal_distribution<double> dist_theta(0, std_theta);
+
+	// Calculating new state
+
+	for(int i=0, i< num_particles; i++)
+	{
+		double theta = particles[i].theta;
+
+		if( fabs(yaw_rate) < EPS){
+			particles[i].x += velocity * delta_t * cos(theta);
+			particles[i].y += velocity * delta_t * sin(theta);
+		}
+		else {
+			particles[i].x += velocity / yaw_rate * ( sin(theta + yaw_rate * delta_t) - sin(theta)) ;
+			particles[i].x += velocity / yaw_rate * ( cos(theta) - cos(theta + yaw_rate * delta_t)) ;
+			particles[i].theta += yaw_rate * delta_t;
+		}
+
+		// Adding noise
+		particles[i].x += dist_x(gen);
+		particles[i].y += dist_y(gen);
+		particles[i].theta += dist_theta(gen);
+
+		}
 }
 
 void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::vector<LandmarkObs>& observations) {
@@ -65,6 +107,31 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::ve
 	// NOTE: this method will NOT be called by the grading code. But you will probably find it useful to 
 	//   implement this method and use it as a helper during the updateWeights phase.
 
+	unsigned int num_observations = observations.size();
+	unsigned int num_predictions = predicted.size();
+
+	for( int i=0; i < num_observations; i++){
+
+		double min_distance = numeric_limits<double>::max();
+		int map_ID = -1; // not possible
+
+		for(int j; j < num_predictions; j++){
+
+			double x_distance = observations[i].x - predicted[j].x;
+			double y_distance = observations[i].y - predicted[j].y;
+
+			double distance = x_distance*x_distance + y_distance*y_distance;
+
+			//storing the ID and updating the min distance
+			if(distance < min_distance){
+				min_distance = distance;
+				map_ID = predicted[j].id;
+			}
+		}
+
+		//updating the observation identifier
+		observations[i] = map_ID;
+	}
 }
 
 void ParticleFilter::updateWeights(double sensor_range, double std_landmark[], 
@@ -79,6 +146,11 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	//   and the following is a good resource for the actual equation to implement (look at equation 
 	//   3.33
 	//   http://planning.cs.uiuc.edu/node99.html
+
+	double std_Landmark_Range = std_landmark[0];
+	double std_Landmark_Bearing = std_landmark[1];
+
+	for ()
 }
 
 void ParticleFilter::resample() {
