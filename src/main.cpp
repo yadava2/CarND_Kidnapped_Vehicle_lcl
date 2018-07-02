@@ -4,6 +4,8 @@
 #include <math.h>
 #include "particle_filter.h"
 
+#include "helper_functions.h"
+
 using namespace std;
 
 // for convenience
